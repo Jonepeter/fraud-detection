@@ -7,4 +7,8 @@ jupyter==1.0.0
 xgboost==2.0.3
 lightgbm==4.3.0
 shap==0.45.1
-imblearn==0.0
+imbalanced-learn==0.11.0
+pytest==7.4.3
+pytest-cov==4.1.0
+flake8==6.1.0
+black==23.11.0
