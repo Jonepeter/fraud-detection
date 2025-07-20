@@ -53,4 +53,5 @@ data/
 # Other
 *.zip
 *.tar.gz
-report/
+interim_report.md
+final_report.md
