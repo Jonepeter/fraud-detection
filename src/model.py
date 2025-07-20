@@ -1,369 +1,348 @@
-import pandas as pd
+"""
+Model training, evaluation, and saving for fraud detection.
+"""
+
+import os
+import json
+import logging
+import pickle
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+import pandas as pd
+from datetime import datetime
+from typing import Dict, List, Any, Union, Tuple, Optional
+
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    roc_auc_score, precision_recall_curve, auc,
-    confusion_matrix, classification_report
+    roc_auc_score, average_precision_score, confusion_matrix
 )
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 import lightgbm as lgb
 import shap
-import joblib
-import os
 
-def split_data(X, y, test_size=0.2, random_state=42):
+from src.utils import get_absolute_path, create_directory_if_not_exists
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def train_model(
+    X: pd.DataFrame,
+    y: pd.Series,
+    model_type: str,
+    params: Dict[str, Any],
+    test_size: float = 0.2,
+    random_state: int = 42
+) -> Tuple[Any, Dict[str, Any]]:
     """
-    Split data into training and testing sets
+    Train a machine learning model.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     X : pandas.DataFrame
-        Features
+        Features.
     y : pandas.Series
-        Target variable
+        Target variable.
+    model_type : str
+        Type of model to train ('random_forest', 'xgboost', 'lightgbm', 'logistic_regression').
+    params : Dict[str, Any]
+        Model hyperparameters.
     test_size : float, default=0.2
-        Proportion of data to use for testing
+        Proportion of the dataset to include in the test split.
     random_state : int, default=42
-        Random seed for reproducibility
+        Random state for reproducibility.
         
-    Returns:
-    --------
-    X_train : pandas.DataFrame
-        Training features
-    X_test : pandas.DataFrame
-        Testing features
-    y_train : pandas.Series
-        Training target
-    y_test : pandas.Series
-        Testing target
+    Returns
+    -------
+    Tuple[Any, Dict[str, Any]]
+        Trained model and a dictionary with training information.
     """
-    return train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y)
-
-def train_logistic_regression(X_train, y_train, class_weight='balanced'):
-    """
-    Train a logistic regression model
-    
-    Parameters:
-    -----------
-    X_train : pandas.DataFrame
-        Training features
-    y_train : pandas.Series
-        Training target
-    class_weight : str or dict, default='balanced'
-        Class weights for imbalanced data
-        
-    Returns:
-    --------
-    sklearn.linear_model.LogisticRegression
-        Trained logistic regression model
-    """
-    model = LogisticRegression(
-        C=1.0,
-        penalty='l2',
-        solver='liblinear',
-        class_weight=class_weight,
-        random_state=42,
-        max_iter=1000
+    # Split data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
     )
+    
+    # Initialize model based on type
+    if model_type == 'random_forest':
+        model = RandomForestClassifier(**params)
+    elif model_type == 'xgboost':
+        model = xgb.XGBClassifier(**params)
+    elif model_type == 'lightgbm':
+        model = lgb.LGBMClassifier(**params)
+    elif model_type == 'logistic_regression':
+        model = LogisticRegression(**params)
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
+    
+    # Train model
+    logger.info(f"Training {model_type} model with parameters: {params}")
     model.fit(X_train, y_train)
-    return model
-
-def train_random_forest(X_train, y_train, class_weight='balanced'):
-    """
-    Train a random forest model
     
-    Parameters:
-    -----------
-    X_train : pandas.DataFrame
-        Training features
-    y_train : pandas.Series
-        Training target
-    class_weight : str or dict, default='balanced'
-        Class weights for imbalanced data
-        
-    Returns:
-    --------
-    sklearn.ensemble.RandomForestClassifier
-        Trained random forest model
-    """
-    model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=10,
-        min_samples_split=10,
-        min_samples_leaf=4,
-        class_weight=class_weight,
-        random_state=42,
-        n_jobs=-1
-    )
-    model.fit(X_train, y_train)
-    return model
-
-def train_xgboost(X_train, y_train, scale_pos_weight=None):
-    """
-    Train an XGBoost model
-    
-    Parameters:
-    -----------
-    X_train : pandas.DataFrame
-        Training features
-    y_train : pandas.Series
-        Training target
-    scale_pos_weight : float, default=None
-        Weight of positive class for imbalanced data
-        
-    Returns:
-    --------
-    xgboost.XGBClassifier
-        Trained XGBoost model
-    """
-    if scale_pos_weight is None:
-        # Calculate scale_pos_weight based on class distribution
-        scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
-    
-    model = xgb.XGBClassifier(
-        n_estimators=100,
-        max_depth=6,
-        learning_rate=0.1,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight,
-        random_state=42,
-        use_label_encoder=False,
-        eval_metric='logloss'
-    )
-    model.fit(X_train, y_train)
-    return model
-
-def evaluate_model(model, X_test, y_test):
-    """
-    Evaluate model performance
-    
-    Parameters:
-    -----------
-    model : object
-        Trained model with predict and predict_proba methods
-    X_test : pandas.DataFrame
-        Testing features
-    y_test : pandas.Series
-        Testing target
-        
-    Returns:
-    --------
-    dict
-        Dictionary of evaluation metrics
-    """
-    # Make predictions
+    # Evaluate model on test set
     y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)[:, 1]
+    y_prob = model.predict_proba(X_test)[:, 1] if hasattr(model, 'predict_proba') else None
     
     # Calculate metrics
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    roc_auc = roc_auc_score(y_test, y_prob)
-    
-    # Calculate precision-recall AUC
-    precision_curve, recall_curve, _ = precision_recall_curve(y_test, y_prob)
-    pr_auc = auc(recall_curve, precision_curve)
-    
-    # Confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
-    
-    # Return metrics
     metrics = {
         'accuracy': accuracy_score(y_test, y_pred),
-        'precision': precision,
-        'recall': recall,
-        'f1_score': f1,
-        'roc_auc': roc_auc,
-        'pr_auc': pr_auc,
-        'confusion_matrix': cm
+        'precision': precision_score(y_test, y_pred),
+        'recall': recall_score(y_test, y_pred),
+        'f1': f1_score(y_test, y_pred)
     }
     
-    return metrics
+    if y_prob is not None:
+        metrics['auc'] = roc_auc_score(y_test, y_prob)
+        metrics['average_precision'] = average_precision_score(y_test, y_prob)
+    
+    # Calculate confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    metrics['confusion_matrix'] = cm.tolist()
+    
+    # Calculate feature importance if available
+    if hasattr(model, 'feature_importances_'):
+        feature_importance = pd.DataFrame({
+            'feature': X.columns,
+            'importance': model.feature_importances_
+        }).sort_values('importance', ascending=False)
+        
+        metrics['feature_importance'] = feature_importance.to_dict('records')
+    
+    # Cross-validation scores
+    cv_scores = cross_val_score(model, X, y, cv=5, scoring='f1')
+    metrics['cv_f1_mean'] = cv_scores.mean()
+    metrics['cv_f1_std'] = cv_scores.std()
+    
+    logger.info(f"Model evaluation metrics: {metrics}")
+    
+    # Training info
+    training_info = {
+        'model_type': model_type,
+        'params': params,
+        'metrics': metrics,
+        'feature_names': X.columns.tolist(),
+        'training_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'data_shape': X.shape
+    }
+    
+    return model, training_info
 
-def plot_confusion_matrix(cm, model_name):
+def evaluate_model(
+    model: Any,
+    X: pd.DataFrame,
+    y: pd.Series,
+    metrics: List[str] = None,
+    threshold: float = 0.5
+) -> Dict[str, Any]:
     """
-    Plot confusion matrix
+    Evaluate a trained model.
     
-    Parameters:
-    -----------
-    cm : numpy.ndarray
-        Confusion matrix
-    model_name : str
-        Name of the model
+    Parameters
+    ----------
+    model : Any
+        Trained model.
+    X : pandas.DataFrame
+        Features.
+    y : pandas.Series
+        Target variable.
+    metrics : List[str], default=None
+        List of metrics to calculate.
+    threshold : float, default=0.5
+        Classification threshold for binary classification.
+        
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary with evaluation metrics.
     """
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
-    plt.title(f'Confusion Matrix - {model_name}')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.show()
+    if metrics is None:
+        metrics = ['accuracy', 'precision', 'recall', 'f1', 'auc', 'average_precision']
+    
+    # Get predictions
+    y_pred = model.predict(X)
+    y_prob = model.predict_proba(X)[:, 1] if hasattr(model, 'predict_proba') else None
+    
+    # Apply threshold for binary classification
+    if y_prob is not None:
+        y_pred_threshold = (y_prob >= threshold).astype(int)
+    else:
+        y_pred_threshold = y_pred
+    
+    # Calculate metrics
+    results = {}
+    
+    if 'accuracy' in metrics:
+        results['accuracy'] = accuracy_score(y, y_pred_threshold)
+    
+    if 'precision' in metrics:
+        results['precision'] = precision_score(y, y_pred_threshold)
+    
+    if 'recall' in metrics:
+        results['recall'] = recall_score(y, y_pred_threshold)
+    
+    if 'f1' in metrics:
+        results['f1'] = f1_score(y, y_pred_threshold)
+    
+    if 'auc' in metrics and y_prob is not None:
+        results['auc'] = roc_auc_score(y, y_prob)
+    
+    if 'average_precision' in metrics and y_prob is not None:
+        results['average_precision'] = average_precision_score(y, y_prob)
+    
+    # Calculate confusion matrix
+    cm = confusion_matrix(y, y_pred_threshold)
+    results['confusion_matrix'] = cm.tolist()
+    
+    return results
 
-def plot_roc_curve(y_test, y_prob, model_name):
+def save_model(
+    model: Any,
+    model_type: str,
+    dataset: str,
+    metrics: Dict[str, Any],
+    params: Dict[str, Any]
+) -> str:
     """
-    Plot ROC curve
+    Save a trained model and its metadata.
     
-    Parameters:
-    -----------
-    y_test : pandas.Series
-        Testing target
-    y_prob : numpy.ndarray
-        Predicted probabilities
-    model_name : str
-        Name of the model
+    Parameters
+    ----------
+    model : Any
+        Trained model.
+    model_type : str
+        Type of model.
+    dataset : str
+        Dataset used for training.
+    metrics : Dict[str, Any]
+        Model evaluation metrics.
+    params : Dict[str, Any]
+        Model hyperparameters.
+        
+    Returns
+    -------
+    str
+        Path to the saved model.
     """
-    from sklearn.metrics import roc_curve
-    fpr, tpr, _ = roc_curve(y_test, y_prob)
-    roc_auc = roc_auc_score(y_test, y_prob)
+    # Create models directory if it doesn't exist
+    models_dir = get_absolute_path('models')
+    create_directory_if_not_exists(models_dir)
     
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.3f})')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
-    plt.legend(loc='lower right')
-    plt.show()
-
-def plot_precision_recall_curve(y_test, y_prob, model_name):
-    """
-    Plot precision-recall curve
+    # Generate timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    Parameters:
-    -----------
-    y_test : pandas.Series
-        Testing target
-    y_prob : numpy.ndarray
-        Predicted probabilities
-    model_name : str
-        Name of the model
-    """
-    precision, recall, _ = precision_recall_curve(y_test, y_prob)
-    pr_auc = auc(recall, precision)
-    
-    plt.figure(figsize=(8, 6))
-    plt.plot(recall, precision, label=f'{model_name} (AUC = {pr_auc:.3f})')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend(loc='lower left')
-    plt.show()
-
-def save_model(model, model_name, model_dir='models'):
-    """
-    Save model to disk
-    
-    Parameters:
-    -----------
-    model : object
-        Trained model
-    model_name : str
-        Name of the model
-    model_dir : str, default='models'
-        Directory to save the model
-    """
-    # Create directory if it doesn't exist
-    os.makedirs(model_dir, exist_ok=True)
+    # Create model filename
+    model_filename = f"{dataset}_{model_type}_{timestamp}.pkl"
+    model_path = os.path.join(models_dir, model_filename)
     
     # Save model
-    model_path = os.path.join(model_dir, f'{model_name}.pkl')
-    joblib.dump(model, model_path)
-    print(f"Model saved to {model_path}")
-
-def load_model(model_name, model_dir='models'):
-    """
-    Load model from disk
+    with open(model_path, 'wb') as f:
+        pickle.dump(model, f)
     
-    Parameters:
-    -----------
-    model_name : str
-        Name of the model
-    model_dir : str, default='models'
-        Directory where the model is saved
-        
-    Returns:
-    --------
-    object
-        Loaded model
+    # Create metadata
+    metadata = {
+        'model_name': f"{dataset}_{model_type}_{timestamp}",
+        'model_type': model_type,
+        'dataset': dataset,
+        'training_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'hyperparameters': params,
+        'metrics': {k: v for k, v in metrics.items() if not isinstance(v, np.ndarray)}
+    }
+    
+    # Save metadata
+    metadata_filename = f"{dataset}_{model_type}_{timestamp}.json"
+    metadata_path = os.path.join(models_dir, metadata_filename)
+    
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
+    
+    logger.info(f"Model saved to {model_path}")
+    logger.info(f"Model metadata saved to {metadata_path}")
+    
+    return model_path
+
+def load_model(model_path: str) -> Any:
     """
-    model_path = os.path.join(model_dir, f'{model_name}.pkl')
-    model = joblib.load(model_path)
-    print(f"Model loaded from {model_path}")
+    Load a saved model.
+    
+    Parameters
+    ----------
+    model_path : str
+        Path to the saved model.
+        
+    Returns
+    -------
+    Any
+        Loaded model.
+    """
+    with open(model_path, 'rb') as f:
+        model = pickle.load(f)
+    
     return model
 
-def explain_model_with_shap(model, X_test, model_type='tree'):
+def explain_model(
+    model: Any,
+    X: pd.DataFrame,
+    sample_size: int = 100
+) -> Dict[str, Any]:
     """
-    Explain model predictions using SHAP
+    Generate model explanations using SHAP.
     
-    Parameters:
-    -----------
-    model : object
-        Trained model
-    X_test : pandas.DataFrame
-        Testing features
-    model_type : str, default='tree'
-        Type of model ('tree', 'linear', or 'kernel')
+    Parameters
+    ----------
+    model : Any
+        Trained model.
+    X : pandas.DataFrame
+        Features.
+    sample_size : int, default=100
+        Number of samples to use for SHAP explanations.
         
-    Returns:
-    --------
-    numpy.ndarray
-        SHAP values
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary with SHAP values and explanations.
     """
-    # Create SHAP explainer based on model type
-    if model_type == 'tree':
-        explainer = shap.TreeExplainer(model)
-    elif model_type == 'linear':
-        explainer = shap.LinearExplainer(model, X_test)
+    # Sample data if it's too large
+    if len(X) > sample_size:
+        X_sample = X.sample(sample_size, random_state=42)
     else:
-        explainer = shap.KernelExplainer(model.predict_proba, shap.sample(X_test, 100))
+        X_sample = X
     
-    # Calculate SHAP values
-    shap_values = explainer.shap_values(X_test)
+    try:
+        # Create explainer based on model type
+        if isinstance(model, RandomForestClassifier):
+            explainer = shap.TreeExplainer(model)
+        elif isinstance(model, (xgb.XGBClassifier, lgb.LGBMClassifier)):
+            explainer = shap.TreeExplainer(model)
+        elif isinstance(model, LogisticRegression):
+            explainer = shap.LinearExplainer(model, X_sample)
+        else:
+            explainer = shap.KernelExplainer(model.predict_proba, X_sample)
+        
+        # Calculate SHAP values
+        shap_values = explainer.shap_values(X_sample)
+        
+        # For models that return a list of shap values (one per class), take the positive class
+        if isinstance(shap_values, list):
+            shap_values = shap_values[1]
+        
+        # Calculate feature importance based on SHAP values
+        feature_importance = pd.DataFrame({
+            'feature': X.columns,
+            'importance': np.abs(shap_values).mean(axis=0)
+        }).sort_values('importance', ascending=False)
+        
+        return {
+            'shap_values': shap_values,
+            'feature_importance': feature_importance.to_dict('records'),
+            'sample_data': X_sample
+        }
     
-    # For tree models, shap_values is a list where the second element contains SHAP values for class 1
-    if isinstance(shap_values, list) and len(shap_values) > 1:
-        shap_values = shap_values[1]
-    
-    return shap_values, explainer
-
-def plot_shap_summary(shap_values, X_test, max_display=20):
-    """
-    Plot SHAP summary plot
-    
-    Parameters:
-    -----------
-    shap_values : numpy.ndarray
-        SHAP values
-    X_test : pandas.DataFrame
-        Testing features
-    max_display : int, default=20
-        Maximum number of features to display
-    """
-    plt.figure(figsize=(10, 8))
-    shap.summary_plot(shap_values, X_test, max_display=max_display, show=False)
-    plt.tight_layout()
-    plt.show()
-
-def plot_shap_dependence(shap_values, X_test, feature_idx):
-    """
-    Plot SHAP dependence plot for a specific feature
-    
-    Parameters:
-    -----------
-    shap_values : numpy.ndarray
-        SHAP values
-    X_test : pandas.DataFrame
-        Testing features
-    feature_idx : int or str
-        Index or name of the feature to plot
-    """
-    plt.figure(figsize=(10, 6))
-    shap.dependence_plot(feature_idx, shap_values, X_test, show=False)
-    plt.tight_layout()
-    plt.show()
+    except Exception as e:
+        logger.error(f"Error generating SHAP explanations: {e}")
+        return {
+            'error': str(e)
+        }
