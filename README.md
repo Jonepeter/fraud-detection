@@ -18,6 +18,21 @@ Financial fraud is a critical challenge for e-commerce and banking platforms. Ef
 - **IpAddress_to_Country.csv**: Maps IP address ranges to countries
 - **creditcard.csv**: Bank credit card transaction data
 
+## Tools Used
+
+This project leverages a variety of Python libraries and tools for data analysis, preprocessing, feature engineering, modeling, and evaluation:
+
+- **pandas**: Data manipulation and analysis
+- **numpy**: Numerical computations
+- **scikit-learn**: Machine learning algorithms, preprocessing, and model evaluation
+- **imbalanced-learn**: Handling class imbalance with techniques like SMOTE and undersampling
+- **matplotlib** & **seaborn**: Data visualization
+- **Jupyter Notebook**: Interactive development and analysis
+- **ipykernel**: Jupyter kernel for running Python code
+- **Python 3.8+**: Core programming language
+
+Additional tools and libraries may be used for model explainability (e.g., SHAP, LIME) and reporting as the project evolves.
+
 ## Project Structure
 
 ```bash
