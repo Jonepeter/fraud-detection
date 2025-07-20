@@ -1,142 +1,189 @@
+"""
+Feature engineering module for fraud detection.
+
+This module provides functions for creating new features from the raw data,
+including time-based features, IP-based features, and aggregation features.
+"""
+
 import pandas as pd
 import numpy as np
-from src.preprocessing import convert_ip_to_int
+from datetime import datetime
+from typing import Dict, List, Tuple, Optional
 
-def add_time_features(df):
+def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Add time-based features to the dataframe
+    Create time-based features from timestamp columns.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     df : pandas.DataFrame
-        Input dataframe with datetime columns
+        Input dataframe with timestamp columns.
         
-    Returns:
-    --------
+    Returns
+    -------
     pandas.DataFrame
-        Dataframe with additional time-based features
+        Dataframe with additional time-based features.
     """
-    # Check if the dataframe has the required columns
-    if 'purchase_time' in df.columns:
-        # Extract hour of day
-        df['hour_of_day'] = df['purchase_time'].dt.hour
-        
-        # Extract day of week
-        df['day_of_week'] = df['purchase_time'].dt.dayofweek
-        
-        # Calculate time since signup if signup_time exists
-        if 'signup_time' in df.columns:
-            df['time_since_signup'] = (df['purchase_time'] - df['signup_time']).dt.total_seconds() / 3600  # in hours
+    # Make a copy to avoid modifying the original dataframe
+    df = df.copy()
     
-    # For creditcard.csv, we can create time-based features from the 'Time' column
-    elif 'Time' in df.columns:
-        # Convert seconds to hours
-        df['time_hours'] = df['Time'] / 3600
+    # Check if the required columns exist
+    if 'signup_time' in df.columns and 'purchase_time' in df.columns:
+        # Convert to datetime if not already
+        if not pd.api.types.is_datetime64_dtype(df['signup_time']):
+            df['signup_time'] = pd.to_datetime(df['signup_time'])
+        if not pd.api.types.is_datetime64_dtype(df['purchase_time']):
+            df['purchase_time'] = pd.to_datetime(df['purchase_time'])
         
-        # Create cyclic features for time of day (assuming Time is seconds from start of day)
-        seconds_in_day = 24 * 60 * 60
-        df['time_of_day'] = df['Time'] % seconds_in_day
-        df['hour_of_day'] = (df['time_of_day'] / 3600).astype(int)
+        # Time difference between signup and purchase (in hours)
+        df['time_diff_hours'] = (df['purchase_time'] - df['signup_time']).dt.total_seconds() / 3600
         
-        # Create sin and cos transformations for cyclical time features
-        df['hour_sin'] = np.sin(2 * np.pi * df['hour_of_day'] / 24)
-        df['hour_cos'] = np.cos(2 * np.pi * df['hour_of_day'] / 24)
+        # Extract hour of day, day of week, month for both timestamps
+        df['signup_hour'] = df['signup_time'].dt.hour
+        df['signup_day'] = df['signup_time'].dt.dayofweek
+        df['signup_month'] = df['signup_time'].dt.month
+        
+        df['purchase_hour'] = df['purchase_time'].dt.hour
+        df['purchase_day'] = df['purchase_time'].dt.dayofweek
+        df['purchase_month'] = df['purchase_time'].dt.month
+        
+        # Flag for night purchases (between 10 PM and 6 AM)
+        df['night_purchase'] = ((df['purchase_hour'] >= 22) | (df['purchase_hour'] <= 6)).astype(int)
+        
+        # Flag for weekend purchases
+        df['weekend_purchase'] = (df['purchase_day'] >= 5).astype(int)
     
     return df
 
-def add_transaction_features(df, user_id_col='user_id'):
+def create_ip_features(df: pd.DataFrame, ip_country_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Add transaction frequency and velocity features
+    Create features based on IP address information.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     df : pandas.DataFrame
-        Input dataframe
-    user_id_col : str, default='user_id'
-        Column name for user ID
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        Dataframe with additional transaction features
-    """
-    # Check if the dataframe has the required columns
-    if user_id_col in df.columns and 'purchase_time' in df.columns:
-        # Sort by user_id and purchase_time
-        df = df.sort_values([user_id_col, 'purchase_time'])
-        
-        # Calculate number of transactions per user
-        df['user_transaction_count'] = df.groupby(user_id_col).cumcount() + 1
-        
-        # Calculate time since last transaction for each user
-        df['time_since_last_transaction'] = df.groupby(user_id_col)['purchase_time'].diff().dt.total_seconds() / 60  # in minutes
-        
-        # Calculate average transaction value per user
-        df['avg_user_purchase_value'] = df.groupby(user_id_col)['purchase_value'].transform('mean')
-        
-        # Calculate standard deviation of transaction value per user
-        df['std_user_purchase_value'] = df.groupby(user_id_col)['purchase_value'].transform('std')
-        
-        # Calculate ratio of current purchase to average purchase for user
-        df['purchase_value_ratio'] = df['purchase_value'] / df['avg_user_purchase_value']
-        df['purchase_value_ratio'].replace([np.inf, -np.inf], np.nan, inplace=True)
-        df['purchase_value_ratio'].fillna(1, inplace=True)  # For first transactions
-    
-    return df
-
-def merge_ip_country_data(fraud_df, ip_country_df):
-    """
-    Merge fraud data with IP-to-country mapping
-    
-    Parameters:
-    -----------
-    fraud_df : pandas.DataFrame
-        Fraud data with IP addresses
+        Input dataframe with IP address column.
     ip_country_df : pandas.DataFrame
-        IP-to-country mapping data
+        Dataframe mapping IP address ranges to countries.
         
-    Returns:
-    --------
+    Returns
+    -------
     pandas.DataFrame
-        Merged dataframe with country information
+        Dataframe with additional IP-based features.
     """
-    # Convert IP addresses to integers
-    fraud_df['ip_address_int'] = fraud_df['ip_address'].apply(convert_ip_to_int)
-    ip_country_df['lower_bound_int'] = ip_country_df['lower_bound_ip_address'].apply(convert_ip_to_int)
-    ip_country_df['upper_bound_int'] = ip_country_df['upper_bound_ip_address'].apply(convert_ip_to_int)
+    from src.preprocessing import convert_ip_to_int
     
-    # Initialize country column
-    fraud_df['country'] = 'Unknown'
+    # Make a copy to avoid modifying the original dataframe
+    df = df.copy()
     
-    # Match IP addresses to country ranges
-    for _, row in ip_country_df.iterrows():
-        mask = (fraud_df['ip_address_int'] >= row['lower_bound_int']) & (fraud_df['ip_address_int'] <= row['upper_bound_int'])
-        fraud_df.loc[mask, 'country'] = row['country']
+    # Check if the required column exists
+    if 'ip_address' in df.columns:
+        # Convert IP address to integer
+        df['ip_int'] = df['ip_address'].apply(convert_ip_to_int)
+        
+        # Prepare IP country dataframe
+        ip_country_df['lower_bound_ip_int'] = ip_country_df['lower_bound_ip_address'].apply(convert_ip_to_int)
+        ip_country_df['upper_bound_ip_int'] = ip_country_df['upper_bound_ip_address'].apply(convert_ip_to_int)
+        
+        # Map IP to country
+        def map_ip_to_country(ip_int):
+            if ip_int is None:
+                return 'unknown'
+            
+            match = ip_country_df[
+                (ip_country_df['lower_bound_ip_int'] <= ip_int) & 
+                (ip_country_df['upper_bound_ip_int'] >= ip_int)
+            ]
+            
+            if len(match) > 0:
+                return match.iloc[0]['country']
+            else:
+                return 'unknown'
+        
+        df['country'] = df['ip_int'].apply(map_ip_to_country)
+        
+        # Count occurrences of each IP address
+        ip_counts = df['ip_address'].value_counts().to_dict()
+        df['ip_frequency'] = df['ip_address'].map(ip_counts)
+        
+        # Flag for high-frequency IPs (potential bots)
+        ip_freq_threshold = df['ip_frequency'].quantile(0.95)
+        df['high_freq_ip'] = (df['ip_frequency'] > ip_freq_threshold).astype(int)
     
-    # Drop intermediate columns
-    fraud_df = fraud_df.drop('ip_address_int', axis=1)
-    
-    return fraud_df
+    return df
 
-def add_amount_features(df):
+def create_aggregation_features(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
     """
-    Add features based on transaction amount
+    Create aggregation features based on the dataset type.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     df : pandas.DataFrame
-        Input dataframe with 'Amount' column
+        Input dataframe.
+    dataset : str
+        Dataset type ('ecommerce' or 'creditcard').
         
-    Returns:
-    --------
+    Returns
+    -------
     pandas.DataFrame
-        Dataframe with additional amount-based features
+        Dataframe with additional aggregation features.
     """
-    if 'Amount' in df.columns:
-        # Log transform amount (helps with skewed distribution)
-        df['log_amount'] = np.log1p(df['Amount'])
-        
-        # Binning amount into categories
-        df['amount_bin'] = pd.qcut(df['Amount'], q=10, labels=False, duplicates='drop')
+    # Make a copy to avoid modifying the original dataframe
+    df = df.copy()
+    
+    if dataset == 'ecommerce':
+        # Group by user_id and calculate statistics
+        if 'user_id' in df.columns and 'purchase_value' in df.columns:
+            user_stats = df.groupby('user_id').agg({
+                'purchase_value': ['count', 'mean', 'std', 'min', 'max'],
+                'is_fraud': 'mean'  # Fraud rate per user
+            })
+            
+            # Flatten the column names
+            user_stats.columns = ['_'.join(col).strip() for col in user_stats.columns.values]
+            
+            # Rename columns for clarity
+            user_stats.rename(columns={
+                'purchase_value_count': 'user_purchase_count',
+                'purchase_value_mean': 'user_avg_purchase',
+                'purchase_value_std': 'user_std_purchase',
+                'purchase_value_min': 'user_min_purchase',
+                'purchase_value_max': 'user_max_purchase',
+                'is_fraud_mean': 'user_fraud_rate'
+            }, inplace=True)
+            
+            # Merge back to the original dataframe
+            df = df.merge(user_stats, on='user_id', how='left')
+            
+            # Fill NaN values for users with only one purchase
+            df['user_std_purchase'].fillna(0, inplace=True)
+    
+    elif dataset == 'creditcard':
+        # For credit card data, create time-based aggregations
+        if 'Time' in df.columns and 'Amount' in df.columns:
+            # Create time windows (e.g., 1-hour windows)
+            df['time_window'] = (df['Time'] // 3600).astype(int)
+            
+            # Group by time window and calculate statistics
+            time_stats = df.groupby('time_window').agg({
+                'Amount': ['count', 'mean', 'std', 'min', 'max'],
+                'Class': 'mean'  # Fraud rate per time window
+            })
+            
+            # Flatten the column names
+            time_stats.columns = ['_'.join(col).strip() for col in time_stats.columns.values]
+            
+            # Rename columns for clarity
+            time_stats.rename(columns={
+                'Amount_count': 'window_tx_count',
+                'Amount_mean': 'window_avg_amount',
+                'Amount_std': 'window_std_amount',
+                'Amount_min': 'window_min_amount',
+                'Amount_max': 'window_max_amount',
+                'Class_mean': 'window_fraud_rate'
+            }, inplace=True)
+            
+            # Merge back to the original dataframe
+            df = df.merge(time_stats, on='time_window', how='left')
     
     return df
