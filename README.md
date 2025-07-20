@@ -33,6 +33,15 @@ This project leverages a variety of Python libraries and tools for data analysis
 
 Additional tools and libraries may be used for model explainability (e.g., SHAP, LIME) and reporting as the project evolves.
 
+## Key Features
+
+- Data cleaning, preprocessing, and merging
+- Feature engineering (time-based, frequency, geolocation)
+- Handling class imbalance (SMOTE, undersampling, etc.)
+- Model building: Logistic Regression, Random Forest/Gradient Boosting
+- Model evaluation: AUC-PR, F1-Score, Confusion Matrix
+- Model explainability: SHAP plots and interpretation
+
 ## Project Structure
 
 ```bash
@@ -94,15 +103,6 @@ Additional tools and libraries may be used for model explainability (e.g., SHAP,
 - **Model Training & Evaluation:**
   - Scripts for feature engineering, model training, and evaluation will be in `src/`.
   - Notebooks provide step-by-step analysis and results.
-
-## Key Features
-
-- Data cleaning, preprocessing, and merging
-- Feature engineering (time-based, frequency, geolocation)
-- Handling class imbalance (SMOTE, undersampling, etc.)
-- Model building: Logistic Regression, Random Forest/Gradient Boosting
-- Model evaluation: AUC-PR, F1-Score, Confusion Matrix
-- Model explainability: SHAP plots and interpretation
 
 ## Contribution Guidelines
 
