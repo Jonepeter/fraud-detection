@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from IPython.display import display
+import sidetable as stb
 
 def load_datasets(data_dir='../data'):
     """
@@ -45,7 +46,7 @@ def display_basic_info(df, title):
     print("\nFirst 5 rows:")
     display(df.head())
     print("\nMissing values:")
-    display(df.isnull().sum())
+    display(df.stb.missing())
     print("\nSummary statistics:")
     display(df.describe())
 
@@ -65,7 +66,7 @@ def analyze_class_distribution(df, class_col='class'):
     fraud_rate = class_counts[1] / len(df) * 100 if 1 in class_counts else 0
     
     print(f"\nClass distribution for {class_col}:")
-    print(class_counts)
+    display(df.stb.freq([class_col]))
     print(f"Fraud rate: {fraud_rate:.2f}%")
     
     # Plot class distribution
@@ -142,6 +143,10 @@ def analyze_time_patterns(fraud_df):
     fraud_df : pandas.DataFrame
         Fraud data dataframe with datetime columns
     """
+    # Convert to datetime if not already
+    fraud_df['purchase_time'] = pd.to_datetime(fraud_df['purchase_time'])
+    fraud_df['signup_time'] = pd.to_datetime(fraud_df['signup_time'])
+    
     # Calculate time difference between signup and purchase
     fraud_df['time_diff_hours'] = (fraud_df['purchase_time'] - fraud_df['signup_time']).dt.total_seconds() / 3600
     
