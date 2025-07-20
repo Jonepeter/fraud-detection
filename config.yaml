@@ -1,0 +1,54 @@
+# Fraud Detection Project Configuration
+
+# Data paths
+data:
+  raw:
+    ecommerce: data/raw/Fraud_Data.csv
+    ip_country: data/raw/IpAddress_to_Country.csv
+    creditcard: data/raw/creditcard.csv
+  processed:
+    ecommerce: data/processed/fraud_data_preprocessed.csv
+    creditcard: data/processed/creditcard_preprocessed.csv
+
+# Model parameters
+models:
+  random_forest:
+    n_estimators: 100
+    max_depth: 10
+    random_state: 42
+  xgboost:
+    n_estimators: 100
+    max_depth: 6
+    learning_rate: 0.1
+    random_state: 42
+  logistic_regression:
+    C: 1.0
+    penalty: 'l2'
+    random_state: 42
+
+# Preprocessing parameters
+preprocessing:
+  test_size: 0.2
+  random_state: 42
+  scaling: true
+  handle_missing: true
+  handle_imbalance:
+    method: 'smote'
+    sampling_strategy: 0.1
+
+# Feature engineering
+feature_engineering:
+  time_features: true
+  ip_features: true
+  aggregation_features: true
+
+# Evaluation metrics
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - auc
+    - average_precision
+  threshold: 0.5
