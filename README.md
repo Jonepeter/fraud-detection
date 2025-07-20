@@ -21,31 +21,31 @@ Financial fraud is a critical challenge for e-commerce and banking platforms. Ef
 ## Project Structure
 
 ```bash
-└── 📁fraud-detection
-    └── 📁data
-        └── 📁processed
-        └── 📁raw
+  📁fraud-detection
+   └── 📁data
+         └── 📁processed
+         └── 📁raw
             ├── creditcard.csv
             ├── Fraud_Data.csv
             ├── IpAddress_to_Country.csv
-    └── 📁models
-        ├── README.md
-    └── 📁notebooks
-        ├── 1_EDA.ipynb
-        ├── 2_Preprocessing.ipynb
-        ├── 3_Model_Building.ipynb
-        ├── 4_Model_Explainability.ipynb
-    └── 📁reports
-        ├── README.md
-    └── 📁src
-        ├── download_data.py
-        ├── eda.py
-        ├── feature_engineering.py
-        ├── model.py
-        ├── preprocessing.py
-    ├── .gitignore
-    ├── README.md
-    └── requirements.txt
+   └── 📁models
+         ├── README.md
+   └── 📁notebooks
+         ├── 1_EDA.ipynb
+         ├── 2_Preprocessing.ipynb
+         ├── 3_Model_Building.ipynb
+         ├── 4_Model_Explainability.ipynb
+   └── 📁reports
+         ├── README.md
+   └── 📁src
+         ├── download_data.py
+         ├── eda.py
+         ├── feature_engineering.py
+         ├── model.py
+         ├── preprocessing.py
+   ├── .gitignore
+   ├── README.md
+   └── requirements.txt
 ```
 
 ## Setup
