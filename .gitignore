@@ -6,6 +6,38 @@ __pycache__/
 # C extensions
 *.so
 
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints
 
@@ -32,7 +64,10 @@ ehthumbs.db
 Desktop.ini
 
 # Data files (optional, if you want to keep them out of git)
-data/
+# Uncomment if you want to exclude all data files
+# data/
+# Keep raw data in git but exclude processed data
+data/processed/
 *.csv
 *.tsv
 *.xls
@@ -42,6 +77,7 @@ data/
 
 # Logs
 *.log
+logs/
 
 # Model files
 *.pkl
@@ -49,9 +85,12 @@ data/
 *.h5
 *.pt
 *.onnx
+models/*.model
 
 # Other
 *.zip
 *.tar.gz
-interim_report.md
-final_report.md
+
+# Reports (keep README.md)
+reports/interim_report.md
+reports/final_report.md
