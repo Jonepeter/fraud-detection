@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from preprocessing import convert_ip_to_int
+from src.preprocessing import convert_ip_to_int
 
 def add_time_features(df):
     """
