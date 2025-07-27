@@ -92,17 +92,77 @@ Additional tools and libraries may be used for model explainability (e.g., SHAP,
 
 ## Usage
 
-- **Exploratory Data Analysis (EDA):**
-  - Run EDA scripts in `src/eda.py` or use Jupyter notebooks in `notebooks/`.
-  - Example:
-  
-    ```bash
-    python src/eda.py
-    ```
+## Quick Start
 
-- **Model Training & Evaluation:**
-  - Scripts for feature engineering, model training, and evaluation will be in `src/`.
-  - Notebooks provide step-by-step analysis and results.
+```bash
+# Install dependencies
+make requirements
+
+# Run complete pipeline (all tasks)
+make run-all
+
+# Run specific tasks
+make run-task1  # Data Analysis and Preprocessing
+make run-task2  # Model Building and Training
+make run-task3  # Model Explainability
+
+# Run tests
+make test
+```
+
+## Complete Pipeline Usage
+
+```python
+from src.complete_pipeline import CompleteFraudPipeline
+
+# Initialize pipeline
+pipeline = CompleteFraudPipeline()
+
+# Run complete pipeline
+results = pipeline.run_complete_pipeline(
+    fraud_path='data/raw/Fraud_Data.csv',
+    ip_path='data/raw/IpAddress_to_Country.csv',
+    credit_path='data/raw/creditcard.csv'
+)
+
+# Access results
+print(f"Best models: {pipeline.best_models}")
+```
+
+## Task-Specific Usage
+
+```bash
+# Run all tasks
+python src/main.py --task all
+
+# Run individual tasks
+python src/main.py --task 1  # Data preprocessing
+python src/main.py --task 2  # Model training
+python src/main.py --task 3  # Model explainability
+```
+
+## Pipeline Features
+
+### Task 1: Data Analysis and Preprocessing
+- Handle missing values and duplicates
+- Convert IP addresses to integer format
+- Merge datasets for geolocation analysis
+- Create time-based features (hour_of_day, day_of_week, time_since_signup)
+- Transaction frequency and velocity features
+- Handle class imbalance with SMOTE
+- Normalization and scaling
+- Categorical encoding
+
+### Task 2: Model Building and Training
+- Train-test split with stratification
+- Multiple models: Logistic Regression, Random Forest, XGBoost
+- Evaluation with imbalanced data metrics (AUC-PR, F1-Score)
+- Best model selection based on AUC-PR
+
+### Task 3: Model Explainability
+- SHAP analysis for best-performing models
+- Global and local feature importance
+- Summary plots and feature rankings
 
 ## Contribution Guidelines
 
