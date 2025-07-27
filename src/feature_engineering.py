@@ -83,9 +83,9 @@ def add_transaction_features(df, user_id_col="user_id"):
         ].transform("mean")
 
         # Calculate standard deviation of transaction value per user
-        df["std_user_purchase_value"] = df.groupby(user_id_col)[
-            "purchase_value"
-        ].transform("std")
+        # df["std_user_purchase_value"] = df.groupby(user_id_col)[
+        #     "purchase_value"
+        # ].transform("std")
 
         # Calculate ratio of current purchase to average purchase for user
         df["purchase_value_ratio"] = (
