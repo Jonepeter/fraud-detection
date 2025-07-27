@@ -94,6 +94,5 @@ models/*.model
 # Reports (keep README.md)
 reports/interim_report.md
 reports/final_report.md
-Makefile
 interim_report1.pdf
 interim_report.pdf
