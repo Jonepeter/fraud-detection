@@ -16,12 +16,14 @@ A comprehensive machine learning pipeline for detecting fraudulent transactions 
 - **Categorical Encoding**: Label encoding
 
 ### Model Training
+
 - **Logistic Regression**: Interpretable baseline
 - **Random Forest**: Ensemble with feature importance
 - **XGBoost**: High-performance gradient boosting
 - **LightGBM**: Fast gradient boosting
 
 ### Evaluation Metrics
+
 - **AUC-ROC**: Area under ROC curve
 - **AUC-PR**: Area under Precision-Recall curve (for imbalanced data)
 - **F1-Score**: Harmonic mean of precision and recall
@@ -29,6 +31,7 @@ A comprehensive machine learning pipeline for detecting fraudulent transactions 
 - **Cross-Validation**: Stratified k-fold
 
 ### Model Explainability
+
 - **SHAP Values**: Shapley Additive exPlanations
 - **Summary, Force, and Waterfall Plots**: Global and local explanations
 - **Feature Importance Rankings**
