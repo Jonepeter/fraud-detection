@@ -1,182 +1,191 @@
 # Fraud Detection Project
 
-## Overview
-
-This project aims to build robust machine learning models to detect fraudulent transactions in both e-commerce and bank credit card data. The solution leverages advanced data analysis, feature engineering, and model explainability techniques to improve fraud detection accuracy and support business decision-making.
-
-## Business Need
-
-Financial fraud is a critical challenge for e-commerce and banking platforms. Effective fraud detection reduces financial losses and builds trust with customers and partners. This project addresses:
-
-- Class imbalance in fraud data
-- Real-time and batch fraud detection
-- Model interpretability for business trust
-
-## Datasets
-
-- **Fraud_Data.csv**: E-commerce transaction data
-- **IpAddress_to_Country.csv**: Maps IP address ranges to countries
-- **creditcard.csv**: Bank credit card transaction data
-
-## Tools Used
-
-This project leverages a variety of Python libraries and tools for data analysis, preprocessing, feature engineering, modeling, and evaluation:
-
-- **pandas**: Data manipulation and analysis
-- **numpy**: Numerical computations
-- **scikit-learn**: Machine learning algorithms, preprocessing, and model evaluation
-- **imbalanced-learn**: Handling class imbalance with techniques like SMOTE and undersampling
-- **matplotlib** & **seaborn**: Data visualization
-- **Jupyter Notebook**: Interactive development and analysis
-- **ipykernel**: Jupyter kernel for running Python code
-- **Python 3.8+**: Core programming language
-
-Additional tools and libraries may be used for model explainability (e.g., SHAP, LIME) and reporting as the project evolves.
-
-## Key Features
-
-- Data cleaning, preprocessing, and merging
-- Feature engineering (time-based, frequency, geolocation)
-- Handling class imbalance (SMOTE, undersampling, etc.)
-- Model building: Logistic Regression, Random Forest/Gradient Boosting
-- Model evaluation: AUC-PR, F1-Score, Confusion Matrix
-- Model explainability: SHAP plots and interpretation
+A comprehensive machine learning pipeline for detecting fraudulent transactions using two datasets: e-commerce fraud data and credit card transaction data.
 
 ## Project Structure
 
-```bash
-  📁fraud-detection
-   └── 📁data
-         └── 📁processed
-         └── 📁raw
-            ├── creditcard.csv
-            ├── Fraud_Data.csv
-            ├── IpAddress_to_Country.csv
-   └── 📁models
-         ├── README.md
-   └── 📁notebooks
-         ├── 1_EDA.ipynb
-         ├── 2_Preprocessing.ipynb
-         ├── 3_Model_Building.ipynb
-         ├── 4_Model_Explainability.ipynb
-   └── 📁reports
-         ├── README.md
-   └── 📁src
-         ├── download_data.py
-         ├── eda.py
-         ├── feature_engineering.py
-         ├── model.py
-         ├── preprocessing.py
-   ├── .gitignore
-   ├── README.md
-   └── requirements.txt
+```
+fraud/
+├── data/                          # Data directory (add your CSV files here)
+│   ├── Fraud_Data.csv
+│   ├── IpAddress_to_Country.csv
+│   └── creditcard.csv
+├── src/                           # Source code
+│   ├── config.py                  # Configuration settings
+│   ├── data_preprocessing.py      # Data preprocessing pipeline
+│   ├── models.py                  # Model training and evaluation
+│   ├── explainability.py          # SHAP-based model explainability
+│   └── pipeline.py                # Main pipeline orchestrator
+├── notebooks/                     # Analysis notebooks
+│   └── exploratory_analysis.py    # EDA script
+├── models/                        # Saved models
+├── results/                       # Results and explanations
+├── requirements.txt               # Dependencies
+└── README.md                      # This file
 ```
 
-## Setup
+## Features
 
-1. **Clone the repository:**
+### Data Preprocessing
+- **Missing Value Handling**: Imputation strategies for numerical and categorical features
+- **Data Cleaning**: Duplicate removal and data type corrections
+- **Feature Engineering**: 
+  - Time-based features (hour_of_day, day_of_week, time_since_signup)
+  - Transaction frequency and velocity features
+  - IP geolocation mapping
+- **Class Imbalance Handling**: SMOTE oversampling and random undersampling
+- **Feature Scaling**: StandardScaler normalization
+- **Categorical Encoding**: Label encoding for categorical variables
 
-   ```bash
-   git clone <repo-url>
-   cd fraud-detection
-   ```
+### Model Training
+- **Logistic Regression**: Interpretable baseline model
+- **Random Forest**: Ensemble method with feature importance
+- **XGBoost**: Gradient boosting for high performance
+- **LightGBM**: Fast gradient boosting alternative
 
-2. **Install dependencies:**
+### Evaluation Metrics
+- **AUC-ROC**: Area under ROC curve
+- **AUC-PR**: Area under Precision-Recall curve (critical for imbalanced data)
+- **F1-Score**: Harmonic mean of precision and recall
+- **Confusion Matrix**: Detailed classification results
+- **Cross-Validation**: Stratified k-fold validation
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Model Explainability
+- **SHAP Values**: Shapley Additive exPlanations
+- **Summary Plots**: Global feature importance visualization
+- **Force Plots**: Individual prediction explanations
+- **Waterfall Plots**: Step-by-step prediction breakdown
+- **Feature Importance Rankings**: Quantified feature contributions
 
-3. **Add data files:**
-   Place `Fraud_Data.csv`, `IpAddress_to_Country.csv`, and `creditcard.csv` in the `data/` folder.
+## Installation
+
+1. Clone or download the project
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Add your data files to the `data/` directory:
+   - `Fraud_Data.csv`
+   - `IpAddress_to_Country.csv`
+   - `creditcard.csv`
 
 ## Usage
 
-## Quick Start
-
+### Run Complete Pipeline
 ```bash
-# Install dependencies
-make requirements
-
-# Run complete pipeline (all tasks)
-make run-all
-
-# Run specific tasks
-make run-task1  # Data Analysis and Preprocessing
-make run-task2  # Model Building and Training
-make run-task3  # Model Explainability
-
-# Run tests
-make test
+cd src
+python pipeline.py
 ```
 
-## Complete Pipeline Usage
+### Run Exploratory Data Analysis
+```bash
+cd notebooks
+python exploratory_analysis.py
+```
 
+### Individual Components
 ```python
-from src.complete_pipeline import CompleteFraudPipeline
+from src.data_preprocessing import DataPreprocessor
+from src.models import FraudModels
+from src.explainability import ModelExplainer
 
-# Initialize pipeline
-pipeline = CompleteFraudPipeline()
+# Initialize components
+preprocessor = DataPreprocessor()
+model_trainer = FraudModels()
 
-# Run complete pipeline
-results = pipeline.run_complete_pipeline(
-    fraud_path='data/raw/Fraud_Data.csv',
-    ip_path='data/raw/IpAddress_to_Country.csv',
-    credit_path='data/raw/creditcard.csv'
-)
+# Load and preprocess data
+fraud_data, ip_data, credit_data = preprocessor.load_data(...)
+X, y = preprocessor.preprocess_fraud_data()
 
-# Access results
-print(f"Best models: {pipeline.best_models}")
+# Train models
+results = model_trainer.train_all_models(X_train, y_train, X_test, y_test)
+
+# Explain best model
+explainer = ModelExplainer(best_model, X_train, X_test, feature_names)
+explainer.generate_explanation_report('results/')
 ```
 
-## Task-Specific Usage
+## Key Challenges Addressed
 
-```bash
-# Run all tasks
-python src/main.py --task all
+### Class Imbalance
+- **Problem**: Fraudulent transactions are rare (typically <1% of data)
+- **Solution**: SMOTE oversampling with careful evaluation using AUC-PR
+- **Metrics**: Prioritize Precision-Recall AUC over ROC-AUC
 
-# Run individual tasks
-python src/main.py --task 1  # Data preprocessing
-python src/main.py --task 2  # Model training
-python src/main.py --task 3  # Model explainability
+### Feature Engineering
+- **Time Features**: Extract temporal patterns from timestamps
+- **Behavioral Features**: User and device transaction patterns
+- **Geolocation**: Map IP addresses to countries for geographic analysis
+
+### Model Selection
+- **Baseline**: Logistic Regression for interpretability
+- **Advanced**: Ensemble methods (Random Forest, XGBoost, LightGBM)
+- **Evaluation**: Cross-validation with stratified sampling
+
+## Results
+
+The pipeline generates:
+- **Model Performance**: Comparison of all models with key metrics
+- **Feature Importance**: SHAP-based feature rankings
+- **Visualizations**: Summary plots, force plots, and waterfall charts
+- **Final Report**: Comprehensive analysis summary
+
+## Model Interpretability
+
+### SHAP Explanations
+- **Global Importance**: Which features matter most overall
+- **Local Explanations**: Why specific predictions were made
+- **Feature Interactions**: How features work together
+
+### Key Insights
+The model explanations reveal:
+- Most important fraud indicators
+- Temporal patterns in fraudulent behavior
+- Geographic risk factors
+- User behavior anomalies
+
+## Best Practices Implemented
+
+1. **Pipeline Architecture**: Modular, reusable components
+2. **Class Imbalance**: Appropriate sampling and metrics
+3. **Feature Engineering**: Domain-specific transformations
+4. **Model Validation**: Stratified cross-validation
+5. **Interpretability**: SHAP-based explanations
+6. **Code Quality**: Clean, documented, maintainable code
+
+## Extending the Project
+
+### Adding New Models
+```python
+# In models.py, add to initialize_models():
+self.models['new_model'] = YourModel(parameters...)
 ```
 
-## Pipeline Features
+### Custom Features
+```python
+# In data_preprocessing.py, extend feature_engineering_fraud():
+df['new_feature'] = your_transformation(df)
+```
 
-### Task 1: Data Analysis and Preprocessing
-- Handle missing values and duplicates
-- Convert IP addresses to integer format
-- Merge datasets for geolocation analysis
-- Create time-based features (hour_of_day, day_of_week, time_since_signup)
-- Transaction frequency and velocity features
-- Handle class imbalance with SMOTE
-- Normalization and scaling
-- Categorical encoding
+### Additional Explanations
+```python
+# In explainability.py, add new visualization methods:
+def plot_custom_explanation(self):
+    # Your custom SHAP visualization
+```
 
-### Task 2: Model Building and Training
-- Train-test split with stratification
-- Multiple models: Logistic Regression, Random Forest, XGBoost
-- Evaluation with imbalanced data metrics (AUC-PR, F1-Score)
-- Best model selection based on AUC-PR
+## Dependencies
 
-### Task 3: Model Explainability
-- SHAP analysis for best-performing models
-- Global and local feature importance
-- Summary plots and feature rankings
-
-## Contribution Guidelines
-
-1. Fork the repository and create a new branch for your feature or bugfix.
-2. Follow PEP8 and write clear, modular code with docstrings.
-3. Add tests or notebook examples for new features.
-4. Submit a pull request with a clear description of your changes.
+- pandas: Data manipulation
+- numpy: Numerical computing
+- scikit-learn: Machine learning algorithms
+- imbalanced-learn: Handling class imbalance
+- xgboost: Gradient boosting
+- lightgbm: Fast gradient boosting
+- shap: Model explainability
+- matplotlib/seaborn: Visualization
 
 ## License
 
-This project is for educational purposes. For commercial use, please contact the project owner.
-
-## Acknowledgements
-
-- 10 Academy
-- Adey Innovations Inc.
-- Open-source contributors and dataset providers
+This project is for educational purposes. Please ensure you have proper permissions for any datasets used.
