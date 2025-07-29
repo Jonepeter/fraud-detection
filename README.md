@@ -2,27 +2,6 @@
 
 A comprehensive machine learning pipeline for detecting fraudulent transactions using two datasets: e-commerce fraud data and credit card transaction data.
 
-## Project Structure
-
-```
-fraud/
-├── data/                          # Data directory (add your CSV files here)
-│   ├── Fraud_Data.csv
-│   ├── IpAddress_to_Country.csv
-│   └── creditcard.csv
-├── src/                           # Source code
-│   ├── config.py                  # Configuration settings
-│   ├── data_preprocessing.py      # Data preprocessing pipeline
-│   ├── models.py                  # Model training and evaluation
-│   ├── explainability.py          # SHAP-based model explainability
-│   └── pipeline.py                # Main pipeline orchestrator
-├── notebooks/                     # Analysis notebooks
-│   └── exploratory_analysis.py    # EDA script
-├── models/                        # Saved models
-├── results/                       # Results and explanations
-├── requirements.txt               # Dependencies
-└── README.md                      # This file
-```
 
 ## Features
 
@@ -65,7 +44,7 @@ fraud/
 pip install -r requirements.txt
 ```
 
-3. Add your data files to the `data/` directory:
+1. Add your data files to the `data/` directory:
    - `Fraud_Data.csv`
    - `IpAddress_to_Country.csv`
    - `creditcard.csv`
@@ -185,6 +164,56 @@ def plot_custom_explanation(self):
 - lightgbm: Fast gradient boosting
 - shap: Model explainability
 - matplotlib/seaborn: Visualization
+
+## Project Structure
+
+```
+fraud/
+├── data/                          # Data directory (add your CSV files here)
+│   ├── Fraud_Data.csv
+│   ├── IpAddress_to_Country.csv
+│   └── creditcard.csv
+├── src/                           # Source code
+│   ├── config.py                  # Configuration settings
+│   ├── data_preprocessing.py      # Data preprocessing pipeline
+│   ├── models.py                  # Model training and evaluation
+│   ├── explainability.py          # SHAP-based model explainability
+│   └── pipeline.py                # Main pipeline orchestrator
+├── notebooks/                     # Analysis notebooks
+│   └── exploratory_analysis.py    # EDA script
+├── models/                        # Saved models
+├── results/                       # Results and explanations
+├── requirements.txt               # Dependencies
+└── README.md                      # This file
+```
+
+## Setup Instructions
+
+1. **Clone the repository** (if you haven't already):
+   ```bash
+   git clone <your-repo-url>
+   cd fraud
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Add data files**:  
+   Place your datasets (e.g., `Fraud_Data.csv`, `IpAddress_to_Country.csv`, `creditcard.csv`) in the `data/` directory.
+
+4. **Run the pipeline**:
+   ```bash
+   python src/pipeline.py
+   ```
+
+5. **(Optional) Explore notebooks**:  
+   Open and run the analysis notebook in the `notebooks/` directory for exploratory data analysis.
+
+**Note:**  
+- Python 3.7+ is recommended.
+- For best results, use a virtual environment (e.g., `venv` or `conda`).
 
 ## License
 
