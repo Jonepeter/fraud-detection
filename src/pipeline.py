@@ -1,129 +1,218 @@
-"""
-Fraud Detection Pipeline
-"""
+"""Main pipeline for fraud detection project."""
 
 import pandas as pd
 import numpy as np
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-import xgboost as xgb
-from imblearn.pipeline import Pipeline as ImbPipeline
-from imblearn.over_sampling import SMOTE
-import joblib
-import logging
+import os
+import sys
 
-logger = logging.getLogger(__name__)
+# Add src to path
+sys.path.append(os.path.dirname(__file__))
+
+from data_preprocessing import DataPreprocessor
+from models import FraudModels
+from explainability import ModelExplainer
+import config
 
 class FraudDetectionPipeline:
-    """Complete fraud detection pipeline"""
+    def __init__(self):
+        self.preprocessor = DataPreprocessor()
+        self.model_trainer = FraudModels(random_state=config.RANDOM_STATE)
+        self.results = {}
+        
+    def run_fraud_data_pipeline(self):
+        """Run complete pipeline for fraud data."""
+        print("=== FRAUD DATA PIPELINE ===")
+        
+        # Load data
+        print("Loading data...")
+        fraud_data, ip_data, _ = self.preprocessor.load_data(
+            config.FRAUD_DATA_PATH, 
+            config.IP_COUNTRY_PATH, 
+            config.CREDITCARD_PATH
+        )
+        
+        # Preprocess data
+        print("Preprocessing data...")
+        X, y = self.preprocessor.preprocess_fraud_data()
+        
+        print(f"Dataset shape: {X.shape}")
+        print(f"Class distribution: {y.value_counts().to_dict()}")
+        
+        # Train-test split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=config.TEST_SIZE, 
+            random_state=config.RANDOM_STATE, 
+            stratify=y
+        )
+        
+        # Handle class imbalance
+        print("Handling class imbalance...")
+        X_train_balanced, y_train_balanced = self.preprocessor.handle_imbalance(
+            X_train, y_train, method='smote'
+        )
+        
+        print(f"Balanced training set shape: {X_train_balanced.shape}")
+        print(f"Balanced class distribution: {pd.Series(y_train_balanced).value_counts().to_dict()}")
+        
+        # Scale features
+        X_train_scaled, X_test_scaled = self.preprocessor.scale_features(
+            X_train_balanced, X_test
+        )
+        
+        # Train models
+        print("Training models...")
+        results = self.model_trainer.train_all_models(
+            X_train_scaled, y_train_balanced, X_test_scaled, y_test
+        )
+        
+        # Get best model
+        best_model_name, best_model = self.model_trainer.get_best_model(results)
+        print(f"Best model: {best_model_name}")
+        
+        # Save best model
+        model_path = self.model_trainer.save_model(
+            best_model, f"fraud_data_{best_model_name}", config.MODELS_DIR
+        )
+        print(f"Best model saved to: {model_path}")
+        
+        # Model explainability
+        print("Generating model explanations...")
+        feature_names = X.columns.tolist()
+        explainer = ModelExplainer(
+            best_model, X_train_scaled, X_test_scaled, feature_names
+        )
+        
+        explanation_dir = os.path.join(config.RESULTS_DIR, 'fraud_data_explanations')
+        importance_df = explainer.generate_explanation_report(explanation_dir)
+        
+        self.results['fraud_data'] = {
+            'results': results,
+            'best_model': best_model_name,
+            'feature_importance': importance_df
+        }
+        
+        return results, best_model_name, importance_df
     
-    def __init__(self, config):
-        self.config = config
-        self.pipeline = None
-        self.feature_names = None
+    def run_credit_data_pipeline(self):
+        """Run complete pipeline for credit card data."""
+        print("\n=== CREDIT CARD DATA PIPELINE ===")
         
-    def create_preprocessor(self, X):
-        """Create preprocessing pipeline"""
-        numeric_features = X.select_dtypes(include=['int64', 'float64']).columns
-        categorical_features = X.select_dtypes(include=['object']).columns
+        # Preprocess data
+        print("Preprocessing data...")
+        X, y = self.preprocessor.preprocess_credit_data()
         
-        numeric_transformer = Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
-        ])
+        print(f"Dataset shape: {X.shape}")
+        print(f"Class distribution: {y.value_counts().to_dict()}")
         
-        categorical_transformer = Pipeline([
-            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore'))
-        ])
+        # Train-test split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=config.TEST_SIZE, 
+            random_state=config.RANDOM_STATE, 
+            stratify=y
+        )
         
-        preprocessor = ColumnTransformer([
-            ('num', numeric_transformer, numeric_features),
-            ('cat', categorical_transformer, categorical_features)
-        ])
+        # Handle class imbalance
+        print("Handling class imbalance...")
+        X_train_balanced, y_train_balanced = self.preprocessor.handle_imbalance(
+            X_train, y_train, method='smote'
+        )
         
-        return preprocessor
+        print(f"Balanced training set shape: {X_train_balanced.shape}")
+        print(f"Balanced class distribution: {pd.Series(y_train_balanced).value_counts().to_dict()}")
+        
+        # Scale features
+        X_train_scaled, X_test_scaled = self.preprocessor.scale_features(
+            X_train_balanced, X_test
+        )
+        
+        # Train models
+        print("Training models...")
+        results = self.model_trainer.train_all_models(
+            X_train_scaled, y_train_balanced, X_test_scaled, y_test
+        )
+        
+        # Get best model
+        best_model_name, best_model = self.model_trainer.get_best_model(results)
+        print(f"Best model: {best_model_name}")
+        
+        # Save best model
+        model_path = self.model_trainer.save_model(
+            best_model, f"credit_data_{best_model_name}", config.MODELS_DIR
+        )
+        print(f"Best model saved to: {model_path}")
+        
+        # Model explainability
+        print("Generating model explanations...")
+        feature_names = X.columns.tolist()
+        explainer = ModelExplainer(
+            best_model, X_train_scaled, X_test_scaled, feature_names
+        )
+        
+        explanation_dir = os.path.join(config.RESULTS_DIR, 'credit_data_explanations')
+        importance_df = explainer.generate_explanation_report(explanation_dir)
+        
+        self.results['credit_data'] = {
+            'results': results,
+            'best_model': best_model_name,
+            'feature_importance': importance_df
+        }
+        
+        return results, best_model_name, importance_df
     
-    def create_pipeline(self, X, model_type='random_forest'):
-        """Create complete ML pipeline"""
-        preprocessor = self.create_preprocessor(X)
+    def generate_final_report(self):
+        """Generate final comparison report."""
+        print("\n=== FINAL REPORT ===")
         
-        # Model selection
-        if model_type == 'random_forest':
-            model = RandomForestClassifier(**self.config['models']['random_forest'])
-        elif model_type == 'xgboost':
-            model = xgb.XGBClassifier(**self.config['models']['xgboost'])
-        elif model_type == 'logistic_regression':
-            model = LogisticRegression(**self.config['models']['logistic_regression'])
-        else:
-            raise ValueError(f"Unknown model type: {model_type}")
+        report_path = os.path.join(config.RESULTS_DIR, 'final_report.txt')
+        os.makedirs(config.RESULTS_DIR, exist_ok=True)
         
-        # Create pipeline with SMOTE
-        pipeline = ImbPipeline([
-            ('preprocessor', preprocessor),
-            ('smote', SMOTE(random_state=42)),
-            ('classifier', model)
-        ])
+        with open(report_path, 'w') as f:
+            f.write("FRAUD DETECTION PROJECT - FINAL REPORT\n")
+            f.write("=" * 50 + "\n\n")
+            
+            for dataset_name, result in self.results.items():
+                f.write(f"{dataset_name.upper()} RESULTS:\n")
+                f.write("-" * 30 + "\n")
+                f.write(f"Best Model: {result['best_model']}\n")
+                
+                best_results = result['results'][result['best_model']]
+                f.write(f"AUC-ROC: {best_results['evaluation']['auc_roc']:.4f}\n")
+                f.write(f"AUC-PR: {best_results['evaluation']['auc_pr']:.4f}\n")
+                
+                f.write("\nTop 5 Important Features:\n")
+                for i, row in result['feature_importance'].head().iterrows():
+                    f.write(f"  {row['feature']}: {row['importance']:.4f}\n")
+                f.write("\n")
         
-        return pipeline
-    
-    def fit(self, X, y, model_type='random_forest'):
-        """Fit the pipeline"""
-        self.pipeline = self.create_pipeline(X, model_type)
-        self.pipeline.fit(X, y)
-        self.feature_names = X.columns.tolist()
-        return self
-    
-    def predict(self, X):
-        """Make predictions"""
-        return self.pipeline.predict(X)
-    
-    def predict_proba(self, X):
-        """Get prediction probabilities"""
-        return self.pipeline.predict_proba(X)
-    
-    def save(self, filepath):
-        """Save pipeline"""
-        joblib.dump(self.pipeline, filepath)
-        logger.info(f"Pipeline saved to {filepath}")
-    
-    def load(self, filepath):
-        """Load pipeline"""
-        self.pipeline = joblib.load(filepath)
-        logger.info(f"Pipeline loaded from {filepath}")
-        return self
+        print(f"Final report saved to: {report_path}")
+        return report_path
 
-def run_pipeline(data_path, target_col, config, model_type='random_forest'):
-    """Run complete pipeline"""
-    # Load data
-    df = pd.read_csv(data_path)
+def main():
+    """Main execution function."""
+    # Create directories
+    os.makedirs(config.MODELS_DIR, exist_ok=True)
+    os.makedirs(config.RESULTS_DIR, exist_ok=True)
     
-    # Split features and target
-    X = df.drop(target_col, axis=1)
-    y = df[target_col]
+    # Initialize pipeline
+    pipeline = FraudDetectionPipeline()
     
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    
-    # Create and fit pipeline
-    pipeline = FraudDetectionPipeline(config)
-    pipeline.fit(X_train, y_train, model_type)
-    
-    # Evaluate
-    from sklearn.metrics import classification_report, roc_auc_score
-    
-    y_pred = pipeline.predict(X_test)
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    
-    print(f"AUC Score: {roc_auc_score(y_test, y_prob):.4f}")
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
-    
-    return pipeline, (X_test, y_test)
+    try:
+        # Run fraud data pipeline
+        pipeline.run_fraud_data_pipeline()
+        
+        # Run credit card data pipeline
+        pipeline.run_credit_data_pipeline()
+        
+        # Generate final report
+        pipeline.generate_final_report()
+        
+        print("\n=== PIPELINE COMPLETED SUCCESSFULLY ===")
+        
+    except Exception as e:
+        print(f"Pipeline failed with error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    main()
