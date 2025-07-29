@@ -4,9 +4,9 @@ import os
 
 # Data paths
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-FRAUD_DATA_PATH = os.path.join(DATA_DIR, 'Fraud_Data.csv')
-IP_COUNTRY_PATH = os.path.join(DATA_DIR, 'IpAddress_to_Country.csv')
-CREDITCARD_PATH = os.path.join(DATA_DIR, 'creditcard.csv')
+FRAUD_DATA_PATH = os.path.join(DATA_DIR, 'raw/Fraud_Data.csv')
+IP_COUNTRY_PATH = os.path.join(DATA_DIR, 'raw/IpAddress_to_Country.csv')
+CREDITCARD_PATH = os.path.join(DATA_DIR, 'raw/creditcard.csv')
 
 # Model paths
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')
